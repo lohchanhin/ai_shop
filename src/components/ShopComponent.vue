@@ -7,41 +7,48 @@
         <div class="display-area">
             <div v-for="item in filteredItems" :key="item.id" class="card" @click="openModal(item)">
                 <h4>{{ item.title }}</h4>
-                <!-- 显示第一张图片，如果存在 -->
                 <img :src="item.images[0]" :alt="`图片-${item.title}`" class="product-image">
                 <p>{{ item.description }}</p>
             </div>
-            <div v-if="selectedItem" class="modal" @click.self="closeModal">
-                <div class="modal-content">
-                    <div class="slider" ref="slider" @mousedown="startDrag" @mousemove="onDrag" @mouseup="endDrag"
-                        @mouseleave="endDrag">
-                        <div class="images-container" :style="{ transform: `translateX(${offsetX}px)` }">
-                            <img v-for="image in selectedItem.images" :src="image" :key="image"
-                                class="product-inside-image">
+        </div>
+        <div v-if="selectedItem" class="modal" @click.self="closeModal">
+            <div class="modal-content">
+                <div id="carouselExampleControls" class="carousel slide" data-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item" v-for="(img, index) in selectedItem.images"
+                            :class="{ 'active': index === 0 }" :key="index">
+                            <img class="d-block w-100" :src="img" :alt="`Slide ${index + 1}`">
                         </div>
                     </div>
-                    <div class="product-details">
-                        <h4 class="product-title">{{ selectedItem.title }}</h4>
-                        <div class="detail">
-                            <strong>参数：</strong><span>{{ selectedItem.params }}</span>
-                        </div>
-                        <div class="detail description">
-                            <strong>描述：</strong><span>{{ selectedItem.description }}</span>
-                        </div>
-                        <div class="detail price">
-                            <strong>价格：</strong><span>{{ selectedItem.price }}</span>
-                        </div>
-                        <div class="quantity">
-                            <label for="quantity">数量:</label>
-                            <input type="number" id="quantity" v-model="quantity" min="1" class="quantity-input">
-                        </div>
-                        <div class="buttons">
-                            <button class="purchase-button" @click="purchase(selectedItem)">确认购买</button>
-                            <button class="close-button" @click="closeModal">关闭</button>
-                        </div>
+                    <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                    <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </div>
+
+                <div class="product-details">
+                    <h4 class="product-title">{{ selectedItem.title }}</h4>
+                    <div class="detail">
+                        <strong>参数：</strong><span>{{ selectedItem.params }}</span>
                     </div>
-
-
+                    <div class="detail description">
+                        <strong>描述：</strong><span>{{ selectedItem.description }}</span>
+                    </div>
+                    <div class="detail price">
+                        <strong>价格：</strong><span>{{ selectedItem.price }}</span>
+                    </div>
+                    <div class="quantity">
+                        <label for="quantity">数量:</label>
+                        <input type="number" id="quantity" v-model="quantity" min="1" class="quantity-input">
+                    </div>
+                    <div class="buttons">
+                        <button class="purchase-button" @click="purchase(selectedItem)">确认购买</button>
+                        <button class="close-button" @click="closeModal">关闭</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -49,133 +56,106 @@
 </template>
 
 <script>
+import { ref, computed } from 'vue';
+
 export default {
     name: 'ShopComponent',
-    data() {
-        return {
-            filterText: '',
-            items: [
-                {
-                    id: 1,
-                    title: '商品A',
-                    description: '描述A',
-                    params: '参数1',
-                    price: '¥100',
-                    baseImageName: 'productA',
-                    imageCount: 3
-                },
-                // 可以添加更多商品...
-            ],
-            selectedItem: null,
-            quantity: 1,
-            startX: 0,
-            currentX: 0,
-            offsetX: 0,
-            dragging: false,
-            velocity: 0,
-            lastTime: 0,
-            frame: null,
-            totalWidth: 0,
-            sliderWidth: 0,
-            friction: 0.92, // 摩擦系数，用于调节惯性滚动时的速度衰减
-            inertiaActive: false // 标志位，指示是否正在进行惯性滚动
-        };
-    },
-    computed: {
-        filteredItems() {
-            return this.items.map(item => ({
+    setup() {
+        const filterText = ref('');
+        const items = ref([
+            {
+                id: 1,
+                title: '商品A',
+                description: '描述A',
+                params: '参数1',
+                price: '¥100',
+                baseImageName: 'productA',
+                imageCount: 3
+            },
+            // 可以添加更多商品...
+        ]);
+        const selectedItem = ref(null);
+        const quantity = ref(1);
+        const cart = ref([]);
+
+        const filteredItems = computed(() => {
+            return items.value.map(item => ({
                 ...item,
-                images: this.generateImagePaths(item.baseImageName, item.imageCount)
-            })).filter(item => item.title.toLowerCase().includes(this.filterText.toLowerCase()));
+                images: generateImagePaths(item.baseImageName, item.imageCount)
+            })).filter(item => item.title.toLowerCase().includes(filterText.value.toLowerCase()));
+        });
+
+        function generateImagePaths(baseName, count) {
+            let images = [];
+            for (let i = 1; i <= count; i++) {
+                images.push(`/images/${baseName}-${i}.jpg`);
+            }
+            return images;
         }
-    },
-    methods: {
-        generateImagePaths(baseName, count) {
-            return Array.from({ length: count }, (_, i) => require(`@/assets/images/${baseName}-${i + 1}.jpg`));
-        },
-        openModal(item) {
-            this.selectedItem = item;
-            this.calculateTotalWidth(item);
-        },
-        calculateTotalWidth(item) {
-            if (item && item.images) {
-                this.totalWidth = item.images.length * this.sliderWidth;
-            }
-        },
-        closeModal() {
-            this.selectedItem = null;
-        },
-        purchase(item) {
-            console.log(`Purchased ${this.quantity} of ${item.title}`);
-            this.closeModal();
-        },
-        updateSliderWidth() {
-            const slider = this.$refs.slider;
-            if (slider) {
-                this.sliderWidth = slider.clientWidth;
-                if (this.selectedItem) {
-                    this.calculateTotalWidth(this.selectedItem);
-                }
-            }
-        },
-        startDrag(event) {
-            if (this.frame) {
-                cancelAnimationFrame(this.frame);
-            }
-            this.dragging = true;
-            this.startX = event.type.includes('mouse') ? event.clientX : event.touches[0].clientX;
-            this.currentX = this.startX;
-            this.velocity = 0;
-            this.lastTime = Date.now();
-            event.preventDefault(); // 防止默认事件，如页面滚动
-        },
-        onDrag(event) {
-            if (this.dragging) {
-                let clientX = event.type.includes('mouse') ? event.clientX : event.touches[0].clientX;
-                const deltaX = clientX - this.currentX;
-                this.currentX = clientX;
-                const tentativeOffsetX = this.offsetX + deltaX;
-                const maxOffset = -(this.totalWidth - this.sliderWidth);
-                this.offsetX = Math.max(maxOffset, Math.min(0, tentativeOffsetX));
-                this.velocity = (1000 * deltaX / (Date.now() - this.lastTime));
-                this.lastTime = Date.now();
-                this.frame = requestAnimationFrame(this.applyInertia);
-                event.preventDefault();
-            }
-        },
-        endDrag() {
-            this.dragging = false;
-            this.frame = requestAnimationFrame(this.applyInertia);
-        },
-        applyInertia() {
-            if (Math.abs(this.velocity) > 10 && !this.dragging) {
-                this.offsetX += this.velocity / 60;
-                this.velocity *= 0.95;
-                this.frame = requestAnimationFrame(this.applyInertia);
+
+        function openModal(item) {
+            selectedItem.value = { ...item, images: generateImagePaths(item.baseImageName, item.imageCount) };
+        }
+
+        function closeModal() {
+            selectedItem.value = null;
+        }
+
+        function addToCart(item) {
+            const existingItem = cart.value.find(product => product.id === item.id);
+            if (existingItem) {
+                existingItem.quantity += quantity.value;
             } else {
-                this.adjustBounds(true);
-                cancelAnimationFrame(this.frame);
-                this.frame = null;
-                this.velocity = 0;
+                cart.value.push({ ...item, quantity: quantity.value });
             }
-        },
-        adjustBounds(snapBack = false) {
-            const minOffset = -(this.totalWidth - this.sliderWidth);
-            this.offsetX = snapBack ? Math.max(minOffset, Math.min(0, this.offsetX)) : this.offsetX;
-        },
-    },
-    mounted() {
-        this.updateSliderWidth();
-        window.addEventListener('resize', this.updateSliderWidth);
-    },
-    beforeUnmount() {
-        window.removeEventListener('resize', this.updateSliderWidth);
+            console.log(`Purchased ${quantity.value} of ${item.title}`);
+            closeModal();
+        }
+
+        return {
+            filterText,
+            items,
+            selectedItem,
+            quantity,
+            cart,
+            filteredItems,
+            openModal,
+            closeModal,
+            addToCart
+        };
     }
 }
 </script>
 
 
+
+
+
+
 <style scoped>
+#carouselExampleControls {
+    width: 50%;
+    height: 100%;
+}
+
+
+.carousel-inner {
+    height: 100%;
+}
+
+.carousel-item img {
+    width: 100%;
+    /* 确保图片宽度总是填满容器 */
+    height: 700px;
+    /* 设定一个固定高度或使用百分比 */
+    object-fit: cover;
+    /* 覆盖整个容器，可能会裁剪图片 */
+    object-position: center;
+    /* 图片居中显示 */
+
+}
+
+
 .product-image {
     width: 100%;
     /* 或其他尺寸，根据您的设计需要调整 */
@@ -247,33 +227,44 @@ export default {
     background: white;
     padding: 20px;
     border-radius: 5px;
-    width: 50vw;
-    height: 50vh;
+    width: 80vw;
+    height: 80vh;
     display: flex;
+    flex-wrap: wrap;
 }
 
 .slider {
-    overflow: auto;
+    overflow: hidden;
     position: relative;
-    cursor: grab;
+    width: 100%;
+    /* 例如，可以设为600px或100%根据父容器 */
+    height: 500px;
+    /* 也可以调整为适合的高度 */
 }
 
 .images-container {
     display: flex;
-    transition: transform 0.3s ease-out;
-    will-change: transform;
+    transition: transform 0.3s ease-in-out;
+    transform: translateX(0%);
+    /* 初始化位置 */
+    height: 200px;
+    /* 容器高度，确保与.slider一致 */
 }
 
 .product-inside-image {
+    width: 200px;
+    /* 图片宽度与.slider相同 */
+    height: 200px;
+    /* 图片高度与.slider相同 */
+    object-fit: cover;
+    /* 确保图片覆盖整个区域 */
     flex-shrink: 0;
-    /* 确保图片在flex容器中不被压缩 */
-    width: 100%;
-    /* 图片宽度自动调整以填满其容器宽度 */
-    height: auto;
-    /* 高度自动调整以保持图片的原始纵横比 */
-    pointer-events: none;
-    /* 禁用图片的默认拖拽行为 */
+    /* 防止flex布局缩放图片 */
 }
+
+
+
+
 
 
 
@@ -287,6 +278,11 @@ export default {
     /* 控制最大宽度 */
     margin: auto;
     text-align: left;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    margin: 1rem;
 }
 
 .product-title {

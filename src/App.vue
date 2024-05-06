@@ -1,17 +1,25 @@
 <template>
   <div id="app">
-    <div><AppBar/></div> <!-- 确保组件标签正确大写，符合 PascalCase 命名 -->
-    <router-view></router-view>
+    <AppBar/> <!-- 使用组件 -->
+    <router-view></router-view> <!-- Vue Router的视图输出 -->
   </div>
 </template>
 
-<script>
+<script setup>
+import { provide } from 'vue';
+import { useCartStore } from './store/cartStore'; // 确保路径正确
 import AppBar from "./components/NavigatorComponent";
 
+// 使用购物车状态管理功能
+const { cart, addToCart, removeFromCart, clearCart } = useCartStore();
+provide('cartStore', { cart, addToCart, removeFromCart, clearCart });
+</script>
+
+<script>
 export default {
   name: 'App',
   components: {
-    AppBar // 这里应该是一个对象，键是组件的引用名，值是导入的组件
+    AppBar
   }
 };
 </script>
